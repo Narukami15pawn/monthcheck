@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月次整合性チェック表_202611.xlsx</title>
+<style>
+  :root {
+    --excel-green: #107c41;
+    --excel-dark: #0b5a2f;
+    --excel-light: #e6f4ea;
+    --grid-line: #d4d4d4;
+    --header-bg: #f3f2f1;
+    --text-main: #252423;
+    --text-muted: #605e5c;
+    --passed-bg: #e5e7eb;
+    --passed-text: #6b7280;
+    --err-bg: #fde7e9;
+    --err-text: #a80000;
+    --warn-bg: #fff4ce;
+    --ok-bg: #dff6dd;
+    --ok-text: #107c10;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Meiryo", "Yu Gothic", sans-serif;
+    background: #f3f2f1;
+    color: var(--text-main);
+    font-size: 13px;
+  }
+
+  /* Escキーで出る開発管理者権限画面（白背景） */
+  #admin-view {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    color: #252423;
+    padding: 24px 28px;
+    z-index: 999;
+    overflow: auto;
+  }
+  body.admin-open #admin-view { display: block; }
+  body.admin-open #app,
+  body.admin-open #clear-view { display: none; }
+
+  .admin-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid #107c41;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+  .admin-top h1 { font-size: 17px; color: #0b5a2f; }
+  .admin-auth {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: #f8f9fa;
+    border: 1px solid #d4d4d4;
+    padding: 14px;
+    border-radius: 2px;
+    max-width: 480px;
+  }
+  .admin-auth input {
+    padding: 6px 10px;
+    border: 1px solid #8a8886;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #252423;
+    font-size: 13px;
+    width: 150px;
+  }
+  .admin-err { color: #a80000; font-size: 12px; margin-top: 6px; display: none; width: 100%; }
+  .admin-err.show { display: block; }
+
+  #admin-answers { display: none; margin-top: 16px; }
+  #admin-answers.show { display: block; }
+  .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .admin-status { font-size: 12px; color: #0b5a2f; font-weight: bold; margin-bottom: 10px; min-height: 18px; }
+  .ans-table { width: 100%; border-collapse: collapse; font-size: 12px; background: #ffffff; min-width: 820px; }
+  .ans-table th, .ans-table td { border: 1px solid #d4d4d4; padding: 7px 9px; text-align: left; vertical-align: top; }
+  .ans-table th { background: #f3f2f1; color: #252423; position: sticky; top: 0; }
+  .ev-line { font-size: 11.5px; line-height: 1.45; color: #323130; }
+  .ev-id { font-weight: bold; color: #0b5a2f; }
+  .tag-ng { background: #fde7e9; color: #a80000; font-weight: bold; padding: 2px 6px; border-radius: 2px; font-size: 11px; white-space: nowrap; }
+  .tag-ok { background: #dff6dd; color: #107c10; padding: 2px 6px; border-radius: 2px; font-size: 11px; white-space: nowrap; }
+
+  /* クリア画面（全30名通過時のみ表示） */
+  #clear-view {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #f3f2f1;
+    z-index: 950;
+    overflow: auto;
+    padding: 32px 20px;
+  }
+  body.cleared:not(.admin-open) #clear-view { display: flex; justify-content: center; align-items: flex-start; }
+  body.cleared:not(.admin-open) #app { display: none; }
+
+  .clear-card {
+    background: #ffffff;
+    border: 2px solid #107c41;
+    max-width: 740px;
+    width: 100%;
+    padding: 24px 28px;
+  }
+  .clear-badge {
+    display: inline-block;
+    background: #e6f4ea;
+    color: #0b5a2f;
+    border: 1px solid #107c41;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+  .clear-card h1 { font-size: 22px; color: #0b5a2f; margin-bottom: 8px; }
+  .clear-sub { font-size: 13px; color: #605e5c; margin-bottom: 18px; }
+  .clear-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+  .clear-table th, .clear-table td { border: 1px solid #d4d4d4; padding: 6px 9px; text-align: left; }
+  .clear-table th { background: #f3f2f1; }
+  .clear-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Excel風トップバー */
+  .topbar {
+    background: var(--excel-green);
+    color: #fff;
+    padding: 7px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 8px; font-weight: bold; flex-wrap: wrap; }
+  .pill { background: rgba(0,0,0,0.22); padding: 2px 8px; border-radius: 2px; font-size: 11px; font-weight: normal; }
+
+  /* リボン風ツールバー */
+  .toolbar {
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--grid-line);
+    padding: 6px 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .toolbar label { display: inline-flex; align-items: center; gap: 4px; }
+  .toolbar input, .toolbar select {
+    padding: 3px 7px;
+    border: 1px solid #8a8886;
+    border-radius: 2px;
+    background: #fff;
+    font-size: 12px;
+    max-width: 100%;
+  }
+
+  /* 数式バー */
+  .fbar {
+    background: #fff;
+    border-bottom: 1px solid var(--grid-line);
+    padding: 4px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    min-width: 0;
+  }
+  .fbox {
+    background: #fff;
+    border: 1px solid var(--grid-line);
+    padding: 2px 8px;
+    font-weight: bold;
+    min-width: 52px;
+    text-align: center;
+    color: #323130;
+    flex-shrink: 0;
+  }
+  .fx { color: #605e5c; font-style: italic; font-weight: bold; padding: 0 2px; flex-shrink: 0; }
+  #cell-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 365px;
+    min-height: calc(100vh - 102px);
+  }
+
+  .sheet { background: #fff; border-right: 1px solid var(--grid-line); display: flex; flex-direction: column; min-width: 0; }
+
+  .table-wrap { overflow: auto; height: calc(100vh - 142px); min-height: 260px; flex: 1; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.grid th {
+    position: sticky; top: 0; background: var(--header-bg); border: 1px solid var(--grid-line);
+    padding: 5px 8px; text-align: center; font-weight: normal; color: #323130; z-index: 1; white-space: nowrap;
+  }
+  table.grid tr.sub-head th {
+    top: 26px; background: #edebe9; font-weight: bold; text-align: left;
+  }
+  table.grid td { border: 1px solid #e1dfdd; padding: 4px 8px; white-space: nowrap; }
+  table.grid tr.row { cursor: pointer; }
+  table.grid tr.row:hover { background: #f3f9f5; }
+  table.grid tr.sel { background: var(--excel-light); outline: 2px solid var(--excel-green); outline-offset: -2px; }
+
+  /* 監査通過済み（灰色にして見なくてよくする） */
+  table.grid tr.passed {
+    background: var(--passed-bg);
+    color: var(--passed-text);
+  }
+  table.grid tr.passed:hover {
+    background: #d1d5db;
+  }
+
+  .idx { background: var(--header-bg); color: var(--text-muted); text-align: center; width: 36px; border-right: 1px solid var(--grid-line); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge-queued { background: var(--excel-green); color: #fff; padding: 1px 6px; border-radius: 2px; font-size: 11px; }
+  .badge-passed { background: #9ca3af; color: #fff; padding: 1px 6px; border-radius: 2px; font-size: 11px; }
+
+  /* 短めのマーク用プルダウン */
+  .mark-col { width: 48px; text-align: center !important; padding: 3px 4px !important; }
+  .mark-select {
+    width: 42px;
+    padding: 2px;
+    border: 1px solid #8a8886;
+    border-radius: 2px;
+    background: #fff;
+    color: #252423;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .mark-select.has-mark {
+    background: #e6f4ea;
+    border-color: #107c41;
+    font-weight: bold;
+  }
+
+  .tabs { display: flex; background: #edebe9; border-bottom: 1px solid var(--grid-line); padding: 4px 8px 0; gap: 3px; flex-wrap: wrap; }
+  .tab {
+    padding: 5px 10px;
+    background: #e1dfdd;
+    border: 1px solid #c8c6c4;
+    border-bottom: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: #323130;
+  }
+  .tab.active {
+    background: #fff;
+    color: var(--excel-green);
+    font-weight: bold;
+    border-top: 2px solid var(--excel-green);
+  }
+
+  /* 右側操作パネル */
+  .panel { padding: 10px; background: #f3f2f1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .card { background: #fff; border: 1px solid var(--grid-line); padding: 10px; }
+  .card-h { font-weight: bold; font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 6px; color: var(--excel-dark); }
+  .note { background: #f8f9fa; border: 1px solid #e1dfdd; padding: 6px 8px; font-size: 11.5px; margin-bottom: 8px; color: #323130; }
+
+  .id-input-wrap { display: inline-flex; align-items: center; border: 1px solid #8a8886; background: #fff; }
+  .id-prefix { background: #edebe9; padding: 4px 6px; font-weight: bold; font-size: 12px; border-right: 1px solid #c8c6c4; color: #323130; }
+  .id-input-wrap input { border: none; padding: 4px 6px; width: 64px; font-size: 12px; outline: none; }
+
+  .queue-list { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+  .queue-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8f9fa; border: 1px solid #d4d4d4; padding: 4px 7px; font-size: 11.5px;
+  }
+  .rem-btn { border: none; background: transparent; color: #a80000; cursor: pointer; font-weight: bold; font-size: 12px; padding: 0 3px; }
+
+  .btn { padding: 5px 10px; border: 1px solid #8a8886; background: #fff; color: #252423; cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .btn:hover { background: #f3f2f1; }
+  .btn-p { background: var(--excel-green); border-color: var(--excel-green); color: #fff; font-weight: bold; }
+  .btn-p:hover { background: var(--excel-dark); }
+  .btn-p:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-warn { background: #fef08a; border-color: #eab308; color: #252423; font-weight: bold; }
+  .btn-warn:hover { background: #fde047; }
+  .btn-danger { background: #fde7e9; border-color: #c80000; color: #a80000; font-weight: bold; }
+  .btn-danger:hover { background: #fbd0d4; }
+
+  .msg { margin-top: 8px; padding: 6px 8px; font-size: 11.5px; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-text); border: 1px solid #107c10; }
+  .msg.err { background: var(--err-bg); color: var(--err-text); border: 1px solid #a80000; }
+  .msg.warn { background: var(--warn-bg); color: #323130; border: 1px solid #c8c6c4; }
+
+  .ref { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 520px; }
+  .ref th, .ref td { border: 1px solid #d4d4d4; padding: 5px 7px; text-align: left; }
+  .ref th { background: #f3f2f1; font-weight: bold; }
+
+  @media (max-width: 980px) {
+    .main { grid-template-columns: 1fr; min-height: auto; }
+    .sheet { border-right: none; border-bottom: 1px solid var(--grid-line); }
+    .table-wrap { height: 300px; max-height: 45vh; }
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 12px; }
+    #admin-view, #clear-view { padding: 16px; }
+    .clear-card { padding: 18px 16px; }
+    .topbar { padding: 6px 8px; }
+    .toolbar { padding: 6px 8px; gap: 6px; }
+    .toolbar input { width: 120px; }
+    .fbar { padding: 4px 8px; }
+    #cell-info { white-space: normal; font-size: 11px; }
+    .tabs { padding: 4px 4px 0; gap: 2px; }
+    .tab { padding: 4px 7px; font-size: 11px; }
+    .table-wrap { height: 250px; max-height: 40vh; }
+    .panel { padding: 8px; gap: 8px; }
+    .card { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Escキーで出る開発管理者権限画面（白背景） -->
+<div id="admin-view">
+  <div class="admin-top">
+    <h1>🛠 開発管理者権限コンソール</h1>
+    <button type="button" class="btn" id="btn-back-sheet">シートに戻る (Esc)</button>
+  </div>
+
+  <div class="admin-auth">
+    <label for="admin-pass" style="font-size:12px;">管理者パスワード：</label>
+    <input type="password" id="admin-pass" placeholder="4桁パスコード" autocomplete="off">
+    <button type="button" class="btn btn-p" id="btn-auth">認証</button>
+    <div id="admin-err" class="admin-err">パスワードが違います。</div>
+  </div>
+
+  <div id="admin-answers">
+    <div class="admin-actions">
+      <button type="button" class="btn btn-p" id="btn-pass-30">30名全員を一括通過（クリアへ）</button>
+      <button type="button" class="btn" id="btn-pass-violators">不整合対象のみ一括通過</button>
+      <button type="button" class="btn btn-warn" id="btn-clear-marks">マークを全解除</button>
+      <button type="button" class="btn btn-danger" id="btn-reset-all">全パターンのシードを再生成・リセット</button>
+    </div>
+    <div id="admin-status" class="admin-status"></div>
+
+    <div style="font-weight:bold;margin-bottom:8px;color:#0b5a2f;" id="admin-pattern-heading">📋 全30名 整合性＆ログエビデンス一覧</div>
+    <div style="overflow:auto;">
+      <table class="ans-table">
+        <thead>
+          <tr>
+            <th>社員ID</th>
+            <th>氏名</th>
+            <th>部署・役職</th>
+            <th>判定</th>
+            <th>一致するログ証拠（エビデンス）</th>
+            <th>理由 / メモ</th>
+          </tr>
+        </thead>
+        <tbody id="admin-ans-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- クリア画面（全30名通過時のみ表示） -->
+<div id="clear-view">
+  <div class="clear-card">
+    <div class="clear-badge">AUDIT COMPLETE</div>
+    <h1>月次整合性監査クリア！</h1>
+    <div class="clear-sub" id="clear-sub-text">全30名の監査が完了しました。</div>
+
+    <table class="clear-table">
+      <thead>
+        <tr>
+          <th>社員ID</th>
+          <th>氏名</th>
+          <th>部署・役職</th>
+          <th>判定</th>
+          <th>確認ポイント</th>
+        </tr>
+      </thead>
+      <tbody id="clear-tbody"></tbody>
+    </table>
+
+    <div class="clear-actions">
+      <button type="button" class="btn btn-p" id="btn-view-sheet">シートを確認する</button>
+      <button type="button" class="btn" id="btn-replay">このシートをやり直す</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span>📊 月次整合性チェック表_202611.xlsx</span>
+      <span class="pill" id="p-pattern">PAT-01</span>
+      <span class="pill" id="p-total">通過：0 / 30 名</span>
+    </div>
+    <button class="btn" id="btn-esc">管理者画面 (Esc)</button>
+  </div>
+
+  <div class="toolbar">
+    <label>シート：
+      <select id="pattern-sel">
+        <option value="PAT-01">PAT-01</option>
+        <option value="PAT-02">PAT-02</option>
+        <option value="PAT-03">PAT-03</option>
+        <option value="PAT-04">PAT-04</option>
+        <option value="PAT-05">PAT-05</option>
+        <option value="PAT-06">PAT-06</option>
+        <option value="PAT-07">PAT-07</option>
+        <option value="PAT-08">PAT-08</option>
+        <option value="PAT-09">PAT-09</option>
+        <option value="PAT-10">PAT-10</option>
+      </select>
+    </label>
+    <label>検索：<input type="text" id="q" placeholder="氏名・ID・役職・区分"></label>
+    <label>部署：
+      <select id="dept">
+        <option value="ALL">全部署</option>
+        <option value="営業部">営業部</option>
+        <option value="開発部">開発部</option>
+        <option value="総務部">総務部</option>
+        <option value="企画部">企画部</option>
+      </select>
+    </label>
+    <span id="q-info" style="color:#323130;">監査枠：0名</span>
+  </div>
+
+  <div class="fbar">
+    <span class="fbox" id="cell-id">A3</span>
+    <span class="fx">fx</span>
+    <span id="cell-info" style="color:#323130;">行をクリックするとセル内容を表示します。全30名の通過でクリアになります。</span>
+  </div>
+
+  <div class="main">
+    <div class="sheet">
+      <div class="tabs">
+        <button class="tab active" data-t="t-data">社員台帳（30名）</button>
+        <button class="tab" data-t="t-time">退勤ログ</button>
+        <button class="tab" data-t="t-exp">経費申請ログ</button>
+        <button class="tab" data-t="t-chat">チャットログ</button>
+        <button class="tab" data-t="t-rules">整合性ルール</button>
+      </div>
+
+      <!-- シート1：社員台帳30名 -->
+      <div id="t-data" class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th>
+            </tr>
+            <tr class="sub-head">
+              <th>#</th><th>社員ID</th><th>対象日</th><th>氏名</th><th>部署・役職</th><th>申請区分</th><th>申請金額</th><th>承認者</th><th>監査状態</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- シート2：退勤ログ -->
+      <div id="t-time" class="table-wrap" style="display:none;padding:10px;">
+        <div style="font-size:12px;color:#605e5c;margin-bottom:8px;">
+          ※退勤ゲート・行動履歴ログ（<strong>氏名なし・番号順</strong>）。退勤時刻や行動メモと、経費・チャットの整合性を照合してください。
+        </div>
+        <table class="ref">
+          <thead>
+            <tr><th class="mark-col">印</th><th>ログID</th><th>日付</th><th>出社</th><th>退勤</th><th>行動・退勤記録</th></tr>
+          </thead>
+          <tbody id="time-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- シート3：経費申請ログ -->
+      <div id="t-exp" class="table-wrap" style="display:none;padding:10px;">
+        <div style="font-size:12px;color:#605e5c;margin-bottom:8px;">
+          ※経費申請ログ（<strong>氏名なし・番号順</strong>）。移動区間・利用内容と金額。退勤時刻や役職と合っているか確認してください。
+        </div>
+        <table class="ref">
+          <thead>
+            <tr><th class="mark-col">印</th><th>伝票No</th><th>日付</th><th>利用内容 / 区間</th><th style="text-align:right;">金額(円)</th></tr>
+          </thead>
+          <tbody id="exp-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- シート4：チャットログ -->
+      <div id="t-chat" class="table-wrap" style="display:none;padding:10px;">
+        <div style="font-size:12px;color:#605e5c;margin-bottom:8px;">
+          ※社内チャット抜粋ログ（<strong>氏名なし・番号順</strong>）。発言内容と日時・チャンネルから行動や申請の整合性を確かめてください。
+        </div>
+        <table class="ref">
+          <thead>
+            <tr><th class="mark-col">印</th><th>ログNo</th><th>日時</th><th>チャンネル</th><th>発言内容</th></tr>
+          </thead>
+          <tbody id="chat-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- シート5：整合性ルール -->
+      <div id="t-rules" class="table-wrap" style="display:none;padding:10px;">
+        <div style="font-weight:bold;margin-bottom:6px;color:#107c41;">整合性チェック基準</div>
+        <ul style="padding-left:18px;margin-bottom:14px;font-size:12px;">
+          <li><strong>R1（退勤・行動不整合）：</strong>退勤時刻や行動履歴・チャット発言と、経費申請の区間・内容・時間帯が食い違っている。</li>
+          <li><strong>R2（金額・申請不整合）：</strong>経費申請の金額や内容が、チャット発言や役職規定（単発上限10,000円超など）と一致しない。</li>
+          <li><strong>R3（承認・権限不整合）：</strong>役職や承認権限と食い違う処理（自己承認や権限外の承認・発言）がある。</li>
+          <li><strong>OK（問題なし）：</strong>退勤・経費・チャット・役職の整合性が取れている場合。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 右側提出パネル -->
+    <div class="panel">
+      <div class="card">
+        <div class="card-h">
+          <span>監査提出枠（全30名対象）</span>
+          <span id="q-count">0名</span>
+        </div>
+        <div class="note">
+          ・社員IDは数字のみ（<code>1</code>〜<code>30</code>）と判定を選択して1名ずつ追加<br>
+          ・<strong>3名たまった時点：</strong>全員正解なら通過、1名でも間違いがあればそのまま残ります<br>
+          ・<strong>4名以上たまった時点：</strong>3名以上正解なら正解分が通過し、間違いのみ残ります<br>
+          ・<strong>クリア条件：</strong>選択中シートの<strong>全30名</strong>を通過させること
+        </div>
+
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+          <div class="id-input-wrap">
+            <span class="id-prefix">EMP-</span>
+            <input type="text" id="emp-num" inputmode="numeric" maxlength="2" placeholder="01〜30">
+          </div>
+          <select id="reason-sel" style="flex:1;min-width:140px;padding:4px;border:1px solid #8a8886;">
+            <option value="">-- 判定を選択 --</option>
+            <option value="R1">R1：退勤・行動の不整合</option>
+            <option value="R2">R2：金額・申請の不整合</option>
+            <option value="R3">R3：承認・権限の不整合</option>
+            <option value="OK">問題なし（整合OK）</option>
+          </select>
+          <button class="btn btn-p" id="btn-add">1名追加</button>
+        </div>
+
+        <div id="queue-list" class="queue-list"></div>
+        <div id="batch-msg" class="msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_SLOTS = [
+  { num:1,  id:"EMP-01", dept:"営業部", role:"一般" },
+  { num:2,  id:"EMP-02", dept:"開発部", role:"一般" },
+  { num:3,  id:"EMP-03", dept:"営業部", role:"一般" },
+  { num:4,  id:"EMP-04", dept:"総務部", role:"主任" },
+  { num:5,  id:"EMP-05", dept:"開発部", role:"一般" },
+  { num:6,  id:"EMP-06", dept:"企画部", role:"一般" },
+  { num:7,  id:"EMP-07", dept:"営業部", role:"主任" },
+  { num:8,  id:"EMP-08", dept:"総務部", role:"一般" },
+  { num:9,  id:"EMP-09", dept:"開発部", role:"主任" },
+  { num:10, id:"EMP-10", dept:"企画部", role:"一般" },
+  { num:11, id:"EMP-11", dept:"営業部", role:"一般" },
+  { num:12, id:"EMP-12", dept:"総務部", role:"一般" },
+  { num:13, id:"EMP-13", dept:"開発部", role:"一般" },
+  { num:14, id:"EMP-14", dept:"企画部", role:"一般" },
+  { num:15, id:"EMP-15", dept:"営業部", role:"一般" },
+  { num:16, id:"EMP-16", dept:"開発部", role:"一般" },
+  { num:17, id:"EMP-17", dept:"総務部", role:"一般" },
+  { num:18, id:"EMP-18", dept:"企画部", role:"一般" },
+  { num:19, id:"EMP-19", dept:"営業部", role:"一般" },
+  { num:20, id:"EMP-20", dept:"開発部", role:"一般" },
+  { num:21, id:"EMP-21", dept:"総務部", role:"主任" },
+  { num:22, id:"EMP-22", dept:"企画部", role:"一般" },
+  { num:23, id:"EMP-23", dept:"営業部", role:"一般" },
+  { num:24, id:"EMP-24", dept:"開発部", role:"一般" },
+  { num:25, id:"EMP-25", dept:"総務部", role:"一般" },
+  { num:26, id:"EMP-26", dept:"企画部", role:"一般" },
+  { num:27, id:"EMP-27", dept:"営業部", role:"一般" },
+  { num:28, id:"EMP-28", dept:"開発部", role:"一般" },
+  { num:29, id:"EMP-29", dept:"総務部", role:"一般" },
+  { num:30, id:"EMP-30", dept:"企画部", role:"主任" }
+];
+
+const PERSON_NAMES = [
+  "冬元 啓子", "遠藤 真綾", "御宝屋敷 ひろのり", "深山 麻央", "A ヤメー",
+  "大陸田 南葵", "火渡 香名江", "甘噛 オキロ", "T アビージュ", "早乙女 忍",
+  "浅瀬 豊", "西条 時行", "木村 康平", "塩 遼樹", "清水 健一",
+  "山崎 結衣", "森 亮太", "東川瑞紀", "橋本 蓮", "石川 沙織",
+  "前田 翔太", "藤田 栞", "後藤 悠真", "岡田 美優", "長谷川 翼",
+  "青木 莉子", "村上 大樹", "近藤 桜", "坂本 航", "南野 隼人"
+];
+
+const DATE_POOL = [
+  "11/02", "11/03", "11/04", "11/05", "11/06", "11/09", "11/10", "11/11", "11/12", "11/13",
+  "11/16", "11/17", "11/18", "11/19", "11/20", "11/04", "11/09", "11/12", "11/16", "11/19",
+  "11/02", "11/06", "11/10", "11/13", "11/17", "11/20", "11/05", "11/11", "11/18", "11/03"
+];
+
+const CAT_POOL = [
+  "交通費", "書籍代", "事務用品", "通信費", "会議費", "郵便費", "備品費", "資料代", "消耗品", "交通費",
+  "書籍代", "交通費", "通信費", "会議費", "交通費", "備品費", "郵便費", "資料代", "消耗品", "交通費",
+  "書籍代", "通信費", "事務用品", "交通費", "会議費", "郵便費", "備品費", "資料代", "消耗品", "交通費"
+];
+
+const NORMAL_AMT_POOL = [
+  1240, 5400, 3200, 2980, 4500, 680, 1100, 9800, 920, 1560,
+  6400, 540, 4200, 480, 2400, 5100, 8900, 1020, 620, 3600,
+  840, 3900, 2750, 950, 1820, 4650, 730, 5800, 2150, 1340
+];
+
+const APPROVER_POOL = [
+  "鈴木部長", "田中課長", "山本室長", "斎藤部長", "鈴木部長", "田中課長", "山本室長", "斎藤部長",
+  "鈴木部長", "田中課長", "山本室長", "斎藤部長", "鈴木部長", "田中課長", "山本室長", "斎藤部長",
+  "鈴木部長", "田中課長", "山本室長", "斎藤部長", "鈴木部長", "田中課長", "山本室長", "斎藤部長",
+  "鈴木部長", "田中課長", "山本室長", "斎藤部長", "鈴木部長", "田中課長"
+];
+
+// 全10シートすべて不整合6名（forcedViolators + rules = 合計6名）
+const PATTERN_SPECS = {
+  "PAT-01": {
+    rules: ["R1", "R1", "R2", "R2", "R3", "R3"],
+    forceExempt: ["T アビージュ", "A ヤメー"],
+    forcedViolators: []
+  },
+  "PAT-02": {
+    rules: ["R1", "R2", "R2", "R3", "R3"],
+    forceExempt: ["T アビージュ"],
+    forcedViolators: [{ name: "A ヤメー", r: "R1" }]
+  },
+  "PAT-03": {
+    rules: ["R1", "R1", "R2", "R3", "R3"],
+    forceExempt: ["A ヤメー"],
+    forcedViolators: [{ name: "T アビージュ", r: "R2" }]
+  },
+  "PAT-04": {
+    rules: ["R1", "R1", "R2", "R3", "R3"],
+    forceExempt: [],
+    forcedViolators: [{ name: "T アビージュ", r: "R1" }, { name: "A ヤメー", r: "R3" }]
+  },
+  "PAT-05": {
+    rules: ["R1", "R1", "R2", "R2", "R3"],
+    forceExempt: ["T アビージュ"],
+    forcedViolators: [{ name: "A ヤメー", r: "R3" }]
+  },
+  "PAT-06": {
+    rules: ["R1", "R2", "R2", "R3", "R3"],
+    forceExempt: ["A ヤメー"],
+    forcedViolators: [{ name: "T アビージュ", r: "R1" }]
+  },
+  "PAT-07": {
+    rules: ["R1", "R1", "R1", "R2", "R2", "R3"],
+    forceExempt: ["T アビージュ", "A ヤメー"],
+    forcedViolators: []
+  },
+  "PAT-08": {
+    rules: ["R1", "R2", "R2", "R2", "R3"],
+    forceExempt: ["T アビージュ"],
+    forcedViolators: [{ name: "A ヤメー", r: "R2" }]
+  },
+  "PAT-09": {
+    rules: ["R1", "R2", "R3", "R3", "R3"],
+    forceExempt: ["A ヤメー"],
+    forcedViolators: [{ name: "T アビージュ", r: "R3" }]
+  },
+  "PAT-10": {
+    rules: ["R1", "R1", "R2", "R3"],
+    forceExempt: [],
+    forcedViolators: [{ name: "T アビージュ", r: "R2" }, { name: "A ヤメー", r: "R1" }]
+  }
+};
+
+function createSeededRng(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleWithRng(arr, rng) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+let seedOffset = 101;
+let currentPattern = "PAT-01";
+const patternStore = {};
+
+function buildPatternDataset(patternId, baseSeed) {
+  const spec = PATTERN_SPECS[patternId] || PATTERN_SPECS["PAT-01"];
+  const idxNum = Number(patternId.replace("PAT-", "")) || 1;
+  const rng = createSeededRng(baseSeed + idxNum * 977);
+
+  const shuffledNames = shuffleWithRng(PERSON_NAMES, rng);
+  const shuffledDates = shuffleWithRng(DATE_POOL, rng);
+  const shuffledCats = shuffleWithRng(CAT_POOL, rng);
+  const shuffledAmts = shuffleWithRng(NORMAL_AMT_POOL, rng);
+  const shuffledApps = shuffleWithRng(APPROVER_POOL, rng);
+
+  const exemptSet = new Set(spec.forceExempt);
+  const forcedMap = {};
+  (spec.forcedViolators || []).forEach(fv => {
+    const foundIdx = shuffledNames.findIndex(n => n === fv.name);
+    if (foundIdx >= 0) forcedMap[foundIdx] = fv.r;
+  });
+
+  const eligibleIndices = [];
+  shuffledNames.forEach((n, idx) => {
+    if (!exemptSet.has(n) && !(idx in forcedMap)) {
+      eligibleIndices.push(idx);
+    }
+  });
+
+  const pickedIndices = shuffleWithRng(eligibleIndices, rng).slice(0, spec.rules.length);
+  const ruleByIdx = { ...forcedMap };
+  pickedIndices.forEach((idx, i) => {
+    ruleByIdx[idx] = spec.rules[i];
+  });
+
+  const orderedTimeLogs = [];
+  const orderedExpLogs = [];
+  const orderedChatLogs = [];
+
+  const rows = BASE_SLOTS.map((slot, idx) => {
+    const personName = shuffledNames[idx];
+    const date = shuffledDates[idx];
+    const cat = shuffledCats[idx];
+    const r = ruleByIdx[idx] || null;
+    const outId = `OUT-${String(idx + 1).padStart(2, "0")}`;
+    const slipId = `EXP-${201 + idx}`;
+
+    let amt = shuffledAmts[idx];
+    let app = shuffledApps[idx];
+    let outT = "18:05";
+    let tNote = `${slot.dept}業務・通常退勤`;
+    let eDetail = `${cat}（${date}利用・規定内）`;
+    let note = "";
+    let chatEntry = null;
+
+    if (r === "R1") {
+      outT = "15:30";
+      tNote = "15:30に早期退勤・記録処理済";
+      eDetail = `${cat}（19:10IC利用・15:30退勤後）`;
+      note = "15:30退勤記録に対し19:10の移動利用を申請";
+      chatEntry = {
+        cid: `CHT-${String(orderedChatLogs.length + 1).padStart(2, "0")}`,
+        dt: `${date} 15:40`,
+        ch: "#audit-room",
+        text: "15:30に退勤済みです。19:10の移動利用は行っていません。"
+      };
+    } else if (r === "R2") {
+      amt = 13500;
+      eDetail = `${cat}（単発上限10,000円超・${amt.toLocaleString()}円）`;
+      note = `単発上限10,000円を超える${amt.toLocaleString()}円を申請`;
+      chatEntry = {
+        cid: `CHT-${String(orderedChatLogs.length + 1).padStart(2, "0")}`,
+        dt: `${date} 16:30`,
+        ch: "#audit-room",
+        text: `${amt.toLocaleString()}円の経費申請、単発上限10,000円超のまま提出しました。`
+      };
+    } else if (r === "R3") {
+      app = personName;
+      eDetail = `${cat}（自己承認処理・${amt.toLocaleString()}円）`;
+      note = `${slot.role}職にもかかわらず自己承認を実施`;
+      chatEntry = {
+        cid: `CHT-${String(orderedChatLogs.length + 1).padStart(2, "0")}`,
+        dt: `${date} 17:15`,
+        ch: "#audit-room",
+        text: `${slot.role}職のまま${amt.toLocaleString()}円の申請を自分で承認してしまいました。`
+      };
+    }
+
+    orderedTimeLogs.push({ tid: outId, date, inT: "09:00", outT, note: tNote });
+    orderedExpLogs.push({ slip: slipId, date, detail: eDetail, amt });
+    if (chatEntry) orderedChatLogs.push(chatEntry);
+
+    return {
+      ...slot,
+      date,
+      name: personName,
+      cat,
+      amt,
+      app,
+      r,
+      note,
+      outId,
+      slipId,
+      chatId: chatEntry ? chatEntry.cid : null
+    };
+  });
+
+  return {
+    patternId,
+    rows,
+    timeLogs: orderedTimeLogs,
+    expLogs: orderedExpLogs,
+    chatLogs: orderedChatLogs,
+    violatorIds: new Set(rows.filter(r => r.r).map(r => r.id)),
+    auditQueue: [],
+    passedIds: new Set(),
+    evidenceMarks: {},
+    curId: rows[0].id
+  };
+}
+
+function getPatternState(patternId = currentPattern) {
+  if (!patternStore[patternId]) {
+    patternStore[patternId] = buildPatternDataset(patternId, seedOffset);
+  }
+  return patternStore[patternId];
+}
+
+Object.keys(PATTERN_SPECS).forEach(pid => {
+  patternStore[pid] = buildPatternDataset(pid, seedOffset);
+});
+
+const MARK_OPTIONS = [
+  { val:"",     label:"-",  title:"マークなし" },
+  { val:"star", label:"★", title:"★ 要注意" },
+  { val:"q",    label:"？", title:"？ 怪しい" },
+  { val:"ex",   label:"！", title:"！ 決定的" },
+  { val:"tri",  label:"△", title:"△ 保留" },
+  { val:"x",    label:"×", title:"× 対象外" }
+];
+
+const ADMIN_PASS = "0105";
+let adminUnlocked = false;
+let clearDismissed = false;
+
+function getEvidenceForRow(row, pState) {
+  const t = pState.timeLogs.find(x => x.tid === row.outId);
+  const e = pState.expLogs.find(x => x.slip === row.slipId);
+  const c = row.chatId ? pState.chatLogs.find(x => x.cid === row.chatId) : null;
+  const lines = [];
+  if (t) {
+    lines.push(`<div class="ev-line"><span class="ev-id">${t.tid}</span>（${t.date} 退勤${t.outT}）：${t.note}</div>`);
+  }
+  if (e) {
+    lines.push(`<div class="ev-line"><span class="ev-id">${e.slip}</span>（${e.date} ${e.amt.toLocaleString()}円）：${e.detail}</div>`);
+  }
+  if (c) {
+    lines.push(`<div class="ev-line"><span class="ev-id">${c.cid}</span>（${c.dt} ${c.ch}）：${c.text}</div>`);
+  }
+  return lines.join("");
+}
+
+function getExpectedCode(row) {
+  return row.r ? row.r : "OK";
+}
+
+function isAll30Cleared(pState) {
+  return pState.passedIds.size === pState.rows.length;
+}
+
+function setAdminStatus(text) {
+  document.getElementById("admin-status").textContent = text;
+}
+
+function syncClearState() {
+  const pState = getPatternState();
+  const allCleared = isAll30Cleared(pState);
+  if (!allCleared) clearDismissed = false;
+  document.body.classList.toggle("cleared", allCleared && !clearDismissed);
+  if (allCleared) renderClearTable(pState);
+}
+
+function renderClearTable(pState) {
+  const targets = pState.rows.filter(r => r.r);
+  document.getElementById("clear-sub-text").textContent =
+    `${pState.patternId}：全${pState.rows.length}名の監査が完了しました。`;
+  document.getElementById("clear-tbody").innerHTML = targets.map(r => `
+    <tr>
+      <td><strong>${r.id}</strong></td>
+      <td>${r.name}</td>
+      <td>${r.dept}（${r.role}）</td>
+      <td><strong>${r.r}</strong></td>
+      <td>${r.note || ""}</td>
+    </tr>
+  `).join("");
+}
+
+function toggleAdminView(forceState) {
+  const next = typeof forceState === "boolean" ? forceState : !document.body.classList.contains("admin-open");
+  document.body.classList.toggle("admin-open", next);
+  if (next) {
+    document.getElementById("admin-pass").focus();
+    if (adminUnlocked) renderAdminAnswers();
+  } else {
+    syncClearState();
+  }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") toggleAdminView();
+});
+document.getElementById("btn-esc").onclick = () => toggleAdminView(true);
+document.getElementById("btn-back-sheet").onclick = () => toggleAdminView(false);
+
+document.getElementById("btn-view-sheet").onclick = () => {
+  clearDismissed = true;
+  syncClearState();
+};
+
+function resetCurrentPattern(statusMessage) {
+  patternStore[currentPattern] = buildPatternDataset(currentPattern, seedOffset);
+  clearDismissed = false;
+  document.getElementById("batch-msg").className = "msg";
+  document.getElementById("batch-msg").textContent = "";
+  if (statusMessage) setAdminStatus(statusMessage);
+  syncClearState();
+  render();
+}
+
+document.getElementById("btn-replay").onclick = () => resetCurrentPattern();
+
+function verifyAdminPass() {
+  const input = document.getElementById("admin-pass").value.trim();
+  const errEl = document.getElementById("admin-err");
+  const ansBox = document.getElementById("admin-answers");
+
+  if (input === ADMIN_PASS) {
+    adminUnlocked = true;
+    errEl.classList.remove("show");
+    ansBox.classList.add("show");
+    renderAdminAnswers();
+  } else {
+    errEl.classList.add("show");
+    ansBox.classList.remove("show");
+  }
+}
+
+document.getElementById("btn-auth").onclick = verifyAdminPass;
+document.getElementById("admin-pass").addEventListener("keydown", e => {
+  if (e.key === "Enter") verifyAdminPass();
+});
+
+function renderAdminAnswers() {
+  const pState = getPatternState();
+  document.getElementById("admin-pattern-heading").textContent =
+    `📋 全30名 整合性＆ログエビデンス一覧（${pState.patternId}）`;
+  document.getElementById("admin-ans-tbody").innerHTML = pState.rows.map(r => {
+    const isNG = Boolean(r.r);
+    const badge = isNG
+      ? `<span class="tag-ng">不整合 (${r.r})</span>`
+      : `<span class="tag-ok">問題なし (OK)</span>`;
+    const desc = isNG
+      ? (r.note || "")
+      : `${r.date}／${r.cat} ${r.amt.toLocaleString()}円／承認:${r.app}（整合OK）`;
+    return `
+      <tr>
+        <td><strong>${r.id}</strong></td>
+        <td>${r.name}</td>
+        <td>${r.dept}（${r.role}）</td>
+        <td>${badge}</td>
+        <td>${getEvidenceForRow(r, pState)}</td>
+        <td>${desc}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+document.getElementById("btn-pass-30").onclick = () => {
+  if (!adminUnlocked) return;
+  const pState = getPatternState();
+  pState.passedIds = new Set(pState.rows.map(r => r.id));
+  pState.auditQueue = [];
+  clearDismissed = false;
+  showMsg("batch-msg", "全30名を通過にしました。", "ok");
+  setAdminStatus("全30名を通過にしました。「シートに戻る」を押すとクリア画面が表示されます。");
+  render();
+  syncClearState();
+};
+
+document.getElementById("btn-pass-violators").onclick = () => {
+  if (!adminUnlocked) return;
+  const pState = getPatternState();
+  pState.violatorIds.forEach(id => pState.passedIds.add(id));
+  pState.auditQueue = pState.auditQueue.filter(item => !pState.violatorIds.has(item.id));
+  showMsg("batch-msg", "不整合対象を通過させました。", "ok");
+  setAdminStatus("不整合対象を通過させました。");
+  render();
+  syncClearState();
+};
+
+document.getElementById("btn-clear-marks").onclick = () => {
+  if (!adminUnlocked) return;
+  const pState = getPatternState();
+  pState.evidenceMarks = {};
+  setAdminStatus("現在のシートのマークを解除しました。");
+  render();
+};
+
+document.getElementById("btn-reset-all").onclick = () => {
+  if (!adminUnlocked) return;
+  seedOffset += 137;
+  Object.keys(PATTERN_SPECS).forEach(pid => {
+    patternStore[pid] = buildPatternDataset(pid, seedOffset);
+  });
+  clearDismissed = false;
+  document.getElementById("batch-msg").className = "msg";
+  document.getElementById("batch-msg").textContent = "";
+  setAdminStatus("全シートのシードを再生成し、状態をリセットしました。");
+  syncClearState();
+  render();
+  if (adminUnlocked) renderAdminAnswers();
+};
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    ["t-data", "t-time", "t-exp", "t-chat", "t-rules"].forEach(id => {
+      document.getElementById(id).style.display = id === t.dataset.t ? "" : "none";
+    });
+  };
+});
+
+function normalizeEmpId(raw) {
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  const num = parseInt(digits, 10);
+  if (num < 1 || num > 30) return null;
+  return `EMP-${String(num).padStart(2, "0")}`;
+}
+
+function renderMarkDropdown(type, id, pState) {
+  const k = `${type}:${id}`;
+  const curMark = pState.evidenceMarks[k] || "";
+  const opts = MARK_OPTIONS.map(o =>
+    `<option value="${o.val}" title="${o.title}"${curMark === o.val ? " selected" : ""}>${o.label}</option>`
+  ).join("");
+  return `<select class="mark-select${curMark ? " has-mark" : ""}" title="印を選択" data-mtype="${type}" data-mid="${id}">${opts}</select>`;
+}
+
+function bindMarkEvents() {
+  const pState = getPatternState();
+  document.querySelectorAll("select.mark-select").forEach(sel => {
+    sel.onchange = e => {
+      e.stopPropagation();
+      const k = `${sel.dataset.mtype}:${sel.dataset.mid}`;
+      if (sel.value) pState.evidenceMarks[k] = sel.value;
+      else delete pState.evidenceMarks[k];
+      render();
+    };
+  });
+}
+
+function evaluateQueue(pState) {
+  const checked = pState.auditQueue.map(item => {
+    const row = pState.rows.find(r => r.id === item.id);
+    const expected = row ? getExpectedCode(row) : null;
+    const isCorrect = Boolean(expected && expected === item.reason);
+    return { ...item, isCorrect };
+  });
+  const correctItems = checked.filter(x => x.isCorrect);
+  const wrongItems = checked.filter(x => !x.isCorrect);
+
+  if (pState.auditQueue.length === 3) {
+    if (correctItems.length === 3) {
+      correctItems.forEach(x => pState.passedIds.add(x.id));
+      pState.auditQueue = [];
+      showMsg("batch-msg", `3名すべて正解！通過：${correctItems.map(x => `${x.id}(${x.reason})`).join(", ")}`, "ok");
+    } else {
+      showMsg("batch-msg", "3名たまりましたが、1名以上あっていません。枠はそのまま残しています。", "warn");
+    }
+    return;
+  }
+
+  if (pState.auditQueue.length >= 4 && correctItems.length >= 3) {
+    correctItems.forEach(x => pState.passedIds.add(x.id));
+    pState.auditQueue = wrongItems.map(x => ({ id: x.id, reason: x.reason }));
+    if (pState.auditQueue.length > 0) {
+      showMsg(
+        "batch-msg",
+        `正解分（${correctItems.length}名）が通過！間違っているもののみ残りました：${pState.auditQueue.map(x => `${x.id}(${x.reason})`).join(", ")}`,
+        "ok"
+      );
+    } else {
+      showMsg("batch-msg", `正解分（${correctItems.length}名）がすべて通過しました！`, "ok");
+    }
+  }
+}
+
+document.getElementById("btn-add").onclick = () => {
+  const pState = getPatternState();
+  if (pState.passedIds.size === pState.rows.length) {
+    return showMsg("batch-msg", "このシートの全30名の監査はすでに完了しています！", "ok");
+  }
+  const empId = normalizeEmpId(document.getElementById("emp-num").value);
+  const reason = document.getElementById("reason-sel").value;
+  if (!empId) {
+    return showMsg("batch-msg", "社員IDは 1〜30 の数字を入力してください。", "err");
+  }
+  if (!reason) {
+    return showMsg("batch-msg", "判定（R1 / R2 / R3 / OK）を選択してください。", "err");
+  }
+  if (pState.passedIds.has(empId)) {
+    return showMsg("batch-msg", `${empId} はすでに通過済みです。`, "warn");
+  }
+
+  const existingIdx = pState.auditQueue.findIndex(x => x.id === empId);
+  if (existingIdx >= 0) {
+    pState.auditQueue[existingIdx].reason = reason;
+  } else {
+    pState.auditQueue.push({ id: empId, reason });
+  }
+
+  pState.curId = empId;
+  document.getElementById("emp-num").value = "";
+  evaluateQueue(pState);
+  render();
+  syncClearState();
+};
+
+document.getElementById("pattern-sel").onchange = e => {
+  currentPattern = e.target.value;
+  document.getElementById("batch-msg").className = "msg";
+  document.getElementById("batch-msg").textContent = "";
+  syncClearState();
+  render();
+  if (adminUnlocked && document.body.classList.contains("admin-open")) {
+    renderAdminAnswers();
+  }
+};
+
+function render() {
+  const pState = getPatternState();
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const dept = document.getElementById("dept").value;
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  const queuedMap = Object.fromEntries(pState.auditQueue.map(x => [x.id, x.reason]));
+
+  pState.rows.forEach((row, i) => {
+    if (dept !== "ALL" && row.dept !== dept) return;
+    if (q && !`${row.id} ${row.name} ${row.dept} ${row.role} ${row.cat} ${row.app}`.toLowerCase().includes(q)) return;
+
+    const isPassed = pState.passedIds.has(row.id);
+    const tr = document.createElement("tr");
+    tr.className = "row";
+    if (row.id === pState.curId && !isPassed) tr.classList.add("sel");
+    if (isPassed) tr.classList.add("passed");
+
+    let st = `<span style="color:#8a8886;">未提出</span>`;
+    if (isPassed) st = `<span class="badge-passed">通過(${getExpectedCode(row)})</span>`;
+    else if (queuedMap[row.id]) st = `<span class="badge-queued">枠内(${queuedMap[row.id]})</span>`;
+
+    tr.innerHTML = `
+      <td class="idx">${i + 3}</td>
+      <td>${row.id}</td><td>${row.date}</td><td>${row.name}</td><td>${row.dept}（${row.role}）</td>
+      <td>${row.cat}</td><td class="num">${row.amt.toLocaleString()}</td><td>${row.app}</td><td>${st}</td>
+    `;
+    tr.onclick = () => {
+      pState.curId = row.id;
+      document.getElementById("emp-num").value = row.id.replace("EMP-", "");
+      render();
+    };
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("time-tbody").innerHTML = pState.timeLogs.map(t =>
+    `<tr><td class="mark-col">${renderMarkDropdown("time", t.tid, pState)}</td><td>${t.tid}</td><td>${t.date}</td><td>${t.inT}</td><td>${t.outT}</td><td>${t.note}</td></tr>`
+  ).join("");
+
+  document.getElementById("exp-tbody").innerHTML = pState.expLogs.map(e =>
+    `<tr><td class="mark-col">${renderMarkDropdown("exp", e.slip, pState)}</td><td>${e.slip}</td><td>${e.date}</td><td>${e.detail}</td><td style="text-align:right;">${e.amt.toLocaleString()}</td></tr>`
+  ).join("");
+
+  document.getElementById("chat-tbody").innerHTML = pState.chatLogs.map(c =>
+    `<tr><td class="mark-col">${renderMarkDropdown("chat", c.cid, pState)}</td><td>${c.cid}</td><td>${c.dt}</td><td>${c.ch}</td><td>${c.text}</td></tr>`
+  ).join("");
+
+  bindMarkEvents();
+
+  const qList = document.getElementById("queue-list");
+  if (!pState.auditQueue.length) {
+    qList.innerHTML = `<div style="font-size:11.5px;color:#605e5c;">現在、監査枠に提出候補はありません。</div>`;
+  } else {
+    qList.innerHTML = pState.auditQueue.map((item, idx) => {
+      const r = pState.rows.find(x => x.id === item.id);
+      return `
+        <div class="queue-item">
+          <span><strong>${item.id}</strong> ${r ? r.name : ""} [${item.reason}]</span>
+          <button type="button" class="rem-btn" data-rem="${idx}" title="枠から外す">✕</button>
+        </div>
+      `;
+    }).join("");
+    qList.querySelectorAll("[data-rem]").forEach(btn => {
+      btn.onclick = () => {
+        pState.auditQueue.splice(Number(btn.dataset.rem), 1);
+        render();
+      };
+    });
+  }
+
+  document.getElementById("pattern-sel").value = currentPattern;
+  document.getElementById("p-pattern").textContent = currentPattern;
+  document.getElementById("q-count").textContent = `${pState.auditQueue.length}名`;
+  document.getElementById("q-info").textContent = `監査枠：${pState.auditQueue.length}名`;
+  document.getElementById("btn-add").disabled = pState.passedIds.size === pState.rows.length;
+  document.getElementById("p-total").textContent = `通過：${pState.passedIds.size} / ${pState.rows.length} 名`;
+
+  const cur = pState.rows.find(x => x.id === pState.curId) || pState.rows[0];
+  document.getElementById("cell-id").textContent = `A${pState.rows.indexOf(cur) + 3}`;
+  document.getElementById("cell-info").textContent =
+    `${cur.id}｜日付:${cur.date}｜${cur.name}（${cur.dept}・${cur.role}）｜${cur.cat}:${cur.amt.toLocaleString()}円｜承認:${cur.app}`;
+}
+
+function showMsg(id, txt, cls) {
+  const el = document.getElementById(id);
+  el.textContent = txt;
+  el.className = `msg show ${cls}`;
+}
+
+document.getElementById("q").oninput = render;
+document.getElementById("dept").onchange = render;
+render();
+</script>
+</body>
+</html>
